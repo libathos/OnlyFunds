@@ -5,6 +5,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 // Read the Finnhub API key from local.properties (git-ignored) or an env var,
@@ -57,7 +58,13 @@ kotlin {
     sourceSets {
         commonMain {
             kotlin.srcDir(generateFinnhubSecrets)
-            dependencies { implementation(libs.ktor.client.core) }
+            dependencies {
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.contentNegotiation)
+                implementation(libs.ktor.serialization.kotlinxJson)
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.coroutines.core)
+            }
         }
         androidMain.dependencies { implementation(libs.ktor.client.okhttp) }
         iosMain.dependencies { implementation(libs.ktor.client.darwin) }

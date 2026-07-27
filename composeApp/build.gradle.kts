@@ -47,6 +47,7 @@ kotlin {
         }
         commonMain.dependencies {
             implementation(projects.network)
+            implementation(projects.domain)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
