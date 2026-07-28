@@ -11,11 +11,11 @@ import androidx.compose.ui.tooling.preview.Preview
 @Composable
 @Preview
 fun App() {
-    MaterialTheme {
+    OnlyFundsTheme {
         TopExpensiveStocksScreen(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BackgroundColor)
+                .background(MaterialTheme.colorScheme.background)
                 .safeContentPadding(),
         )
     }
