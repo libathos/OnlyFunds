@@ -8,4 +8,8 @@ object FinnhubConfig {
     const val TOKEN_PARAM: String = "token"
     const val SYMBOL_PARAM: String = "symbol"
     const val QUOTE_PATH: String = "quote"
+    const val CANDLE_PATH: String = "stock/candle"
+    const val RESOLUTION_PARAM: String = "resolution"
+    const val FROM_PARAM: String = "from"
+    const val TO_PARAM: String = "to"
 }
