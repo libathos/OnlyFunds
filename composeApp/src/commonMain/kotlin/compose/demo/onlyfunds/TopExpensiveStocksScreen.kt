@@ -9,6 +9,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Animatable as FloatAnimatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +42,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun TopExpensiveStocksScreen(
     modifier: Modifier = Modifier,
+    onStockSelected: (String) -> Unit = {},
     viewModel: TopExpensiveStocksViewModel = viewModel { TopExpensiveStocksViewModel() },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -46,6 +50,7 @@ fun TopExpensiveStocksScreen(
     TopExpensiveStocksContent(
         uiState = uiState,
         onAction = viewModel::onAction,
+        onStockSelected = onStockSelected,
         modifier = modifier,
     )
 }
@@ -54,6 +59,7 @@ fun TopExpensiveStocksScreen(
 fun TopExpensiveStocksContent(
     uiState: TopStocksUiState,
     onAction: (TopStocksAction) -> Unit,
+    onStockSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -64,14 +70,61 @@ fun TopExpensiveStocksContent(
     ) {
         Header(title = uiState.title, isRefreshing = uiState.isRefreshing)
 
-        when (val content = uiState.content) {
+        val content = uiState.content
+        if (content is TopStocksUiState.Content.Stocks) {
+            RefreshProgressBar(
+                isRefreshing = uiState.isRefreshing,
+                refreshIntervalMillis = uiState.refreshIntervalMillis,
+                refreshToken = uiState.refreshToken,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+        }
+
+        when (content) {
             is TopStocksUiState.Content.Loading -> LoadingContent()
             is TopStocksUiState.Content.Error -> ErrorContent(
                 message = content.message,
                 onRetry = { onAction(TopStocksAction.Retry) },
             )
-            is TopStocksUiState.Content.Stocks -> StocksContent(rows = content.rows)
+            is TopStocksUiState.Content.Stocks -> StocksContent(
+                rows = content.rows,
+                onStockSelected = onStockSelected,
+            )
         }
+    }
+}
+
+@Composable
+private fun RefreshProgressBar(
+    isRefreshing: Boolean,
+    refreshIntervalMillis: Long,
+    refreshToken: Int,
+    modifier: Modifier = Modifier,
+) {
+    if (isRefreshing) {
+        LinearProgressIndicator(
+            modifier = modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = OnlyFundsTheme.colors.divider,
+        )
+    } else {
+        val progress = remember { FloatAnimatable(0f) }
+        LaunchedEffect(refreshToken) {
+            progress.snapTo(0f)
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    durationMillis = refreshIntervalMillis.toInt(),
+                    easing = LinearEasing,
+                ),
+            )
+        }
+        LinearProgressIndicator(
+            progress = { progress.value },
+            modifier = modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = OnlyFundsTheme.colors.divider,
+        )
     }
 }
 
@@ -147,11 +200,11 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun StocksContent(rows: List<StockRowUiModel>) {
+private fun StocksContent(rows: List<StockRowUiModel>, onStockSelected: (String) -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(rows, key = { it.symbol }) { row ->
             Column(modifier = Modifier.animateItem()) {
-                StockRow(row)
+                StockRow(row, onClick = { onStockSelected(row.symbol) })
                 Divider(color = OnlyFundsTheme.colors.divider)
             }
         }
@@ -159,10 +212,11 @@ private fun StocksContent(rows: List<StockRowUiModel>) {
 }
 
 @Composable
-private fun StockRow(model: StockRowUiModel) {
+private fun StockRow(model: StockRowUiModel, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -248,6 +302,7 @@ fun TopExpensiveStocksScreenPreview() {
                 ),
             ),
             onAction = {},
+            onStockSelected = {},
         )
     }
 }

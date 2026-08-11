@@ -13,6 +13,8 @@ data class StockRowUiModel(
 data class TopStocksUiState(
     val title: String,
     val isRefreshing: Boolean = false,
+    val refreshIntervalMillis: Long = 15_000L,
+    val refreshToken: Int = 0,
     val content: Content,
 ) {
     sealed interface Content {

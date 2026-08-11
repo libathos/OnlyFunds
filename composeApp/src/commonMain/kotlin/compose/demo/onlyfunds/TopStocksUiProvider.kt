@@ -14,9 +14,14 @@ sealed interface TopStocksMutation {
 
 class TopStocksUiProvider(
     private val title: String = "Top 10 Most Expensive Stocks",
+    private val refreshIntervalMillis: Long = 15_000L,
 ) {
     fun initialState(): TopStocksUiState =
-        TopStocksUiState(title = title, content = TopStocksUiState.Content.Loading)
+        TopStocksUiState(
+            title = title,
+            refreshIntervalMillis = refreshIntervalMillis,
+            content = TopStocksUiState.Content.Loading,
+        )
 
     fun reduce(current: TopStocksUiState, mutation: TopStocksMutation): TopStocksUiState =
         when (mutation) {
@@ -42,6 +47,7 @@ class TopStocksUiProvider(
                     .orEmpty()
                 current.copy(
                     isRefreshing = false,
+                    refreshToken = current.refreshToken + 1,
                     content = TopStocksUiState.Content.Stocks(
                         rows = mutation.stocks.mapIndexed { index, stock ->
                             stock.toUiModel(
@@ -64,17 +70,9 @@ class TopStocksUiProvider(
         return StockRowUiModel(
             rank = rank.toString(),
             symbol = symbol,
-            price = "$" + formatPrice(quote.current),
+            price = formatUsd(quote.current),
             priceValue = quote.current,
             trend = trend,
         )
-    }
-
-    private fun formatPrice(value: Double): String {
-        val rounded = (value * 100).toLong()
-        val whole = rounded / 100
-        val cents = (rounded % 100).let { if (it < 0) -it else it }
-        val centsText = cents.toString().padStart(2, '0')
-        return "$whole.$centsText"
     }
 }

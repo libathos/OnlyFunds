@@ -25,9 +25,11 @@ sealed interface TopStocksAction {
 
 class TopExpensiveStocksViewModel(
     private val getQuote: GetQuoteUseCase = GetQuoteUseCase(),
-    private val uiProvider: TopStocksUiProvider = TopStocksUiProvider(),
     private val limit: Int = 10,
     private val refreshIntervalMillis: Long = 15_000L,
+    private val uiProvider: TopStocksUiProvider = TopStocksUiProvider(
+        refreshIntervalMillis = refreshIntervalMillis,
+    ),
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(uiProvider.initialState())
