@@ -8,6 +8,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,41 +37,61 @@ class TopExpensiveStocksViewModel(
     val uiState: StateFlow<TopStocksUiState> = _uiState.asStateFlow()
 
     private var pollingJob: Job? = null
-
-    init {
-        onAction(TopStocksAction.Load)
-    }
+    private var hasLoadedOnce = false
 
     fun onAction(action: TopStocksAction) {
         when (action) {
-            TopStocksAction.Load,
-            TopStocksAction.Retry -> startPolling()
+            TopStocksAction.Load -> startPolling()
+            TopStocksAction.Retry -> {
+                hasLoadedOnce = false
+                restartPolling()
+            }
         }
     }
 
-    private fun startPolling() {
+    /**
+     * Starts polling for quote updates. Safe to call whenever the screen
+     * becomes visible: if a poll loop is already running this is a no-op, so
+     * returning to the list resumes (rather than restarts) polling.
+     */
+    fun startPolling() {
+        if (pollingJob?.isActive == true) return
+        pollingJob = viewModelScope.launch { pollLoop() }
+    }
+
+    /**
+     * Stops polling. Called when the list screen leaves composition so no quote
+     * requests fire while the user is on another screen (e.g. the chart).
+     */
+    fun stopPolling() {
         pollingJob?.cancel()
-        pollingJob = viewModelScope.launch {
-            var firstLoad = true
-            while (isActive) {
-                if (firstLoad) {
-                    emit(TopStocksMutation.ShowLoading)
-                    emit(fetchTopExpensiveStocks())
-                    firstLoad = false
+        pollingJob = null
+    }
+
+    private fun restartPolling() {
+        pollingJob?.cancel()
+        pollingJob = viewModelScope.launch { pollLoop() }
+    }
+
+    private suspend fun pollLoop() {
+        while (currentCoroutineContext().isActive) {
+            if (!hasLoadedOnce) {
+                emit(TopStocksMutation.ShowLoading)
+                emit(fetchTopExpensiveStocks())
+                hasLoadedOnce = true
+            } else {
+                emit(TopStocksMutation.StartRefresh)
+                val startMark = TimeSource.Monotonic.markNow()
+                val mutation = fetchTopExpensiveStocks()
+                val remaining = REFRESH_INDICATOR_MIN_DURATION - startMark.elapsedNow()
+                if (remaining.isPositive()) delay(remaining)
+                if (mutation is TopStocksMutation.ShowStocks) {
+                    emit(mutation)
                 } else {
-                    emit(TopStocksMutation.StartRefresh)
-                    val startMark = TimeSource.Monotonic.markNow()
-                    val mutation = fetchTopExpensiveStocks()
-                    val remaining = REFRESH_INDICATOR_MIN_DURATION - startMark.elapsedNow()
-                    if (remaining.isPositive()) delay(remaining)
-                    if (mutation is TopStocksMutation.ShowStocks) {
-                        emit(mutation)
-                    } else {
-                        emit(TopStocksMutation.StopRefresh)
-                    }
+                    emit(TopStocksMutation.StopRefresh)
                 }
-                delay(refreshIntervalMillis)
             }
+            delay(refreshIntervalMillis)
         }
     }
 
