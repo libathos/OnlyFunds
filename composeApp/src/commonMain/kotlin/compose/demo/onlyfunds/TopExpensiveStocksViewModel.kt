@@ -2,17 +2,20 @@ package compose.demo.onlyfunds
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.onlyfunds.domain.model.AlertDirection
 import io.onlyfunds.domain.usecases.GetQuoteUseCase
 import io.onlyfunds.network.NetworkResponse
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -35,6 +38,9 @@ class TopExpensiveStocksViewModel(
 
     private val _uiState = MutableStateFlow(uiProvider.initialState())
     val uiState: StateFlow<TopStocksUiState> = _uiState.asStateFlow()
+
+    private val _alertEvents = Channel<String>(Channel.BUFFERED)
+    val alertEvents = _alertEvents.receiveAsFlow()
 
     private var pollingJob: Job? = null
     private var hasLoadedOnce = false
@@ -99,6 +105,32 @@ class TopExpensiveStocksViewModel(
         _uiState.update { current -> uiProvider.reduce(current, mutation) }
     }
 
+    /**
+     * Checks the freshly fetched prices against any active alerts. When a
+     * BELOW alert's target is reached (current price is at or below target) a
+     * toast event is sent on every poll while the condition holds, so the user
+     * keeps being reminded until they change or clear the alert.
+     */
+    private fun evaluateAlerts(stocks: List<StockQuote>) {
+        val alerts = PriceAlertStore.alerts.value
+        if (alerts.isEmpty()) return
+
+        stocks.forEach { stock ->
+            val alert = alerts[stock.symbol] ?: return@forEach
+            val currentPrice = stock.quote.current
+            val isTriggered = when (alert.direction) {
+                AlertDirection.BELOW -> currentPrice <= alert.targetPrice
+                AlertDirection.ABOVE -> currentPrice >= alert.targetPrice
+            }
+            if (isTriggered) {
+                _alertEvents.trySend(
+                    "${stock.symbol} is at ${formatUsd(currentPrice)}, " +
+                        "equal or below your ${formatUsd(alert.targetPrice)} alert.",
+                )
+            }
+        }
+    }
+
     private suspend fun fetchTopExpensiveStocks(): TopStocksMutation = coroutineScope {
         val results = CANDIDATE_SYMBOLS
             .map { symbol -> async { symbol to getQuote(symbol) } }
@@ -110,6 +142,8 @@ class TopExpensiveStocksViewModel(
                 is NetworkResponse.Error -> null
             }
         }
+
+        evaluateAlerts(stocks)
 
         if (stocks.isEmpty()) {
             val firstError = results

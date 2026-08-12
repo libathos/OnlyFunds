@@ -2,7 +2,9 @@ package compose.demo.onlyfunds
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.onlyfunds.domain.model.AlertDirection
 import io.onlyfunds.domain.model.ChartTimeFrame
+import io.onlyfunds.domain.model.PriceAlert
 import io.onlyfunds.domain.usecases.GetStockCandlesUseCase
 import io.onlyfunds.network.NetworkResponse
 import kotlinx.coroutines.Job
@@ -17,6 +19,7 @@ import kotlin.time.ExperimentalTime
 sealed interface StockChartAction {
     data object Retry : StockChartAction
     data class SelectTimeFrame(val timeFrame: ChartTimeFrame) : StockChartAction
+    data class SetAlert(val targetPrice: Double) : StockChartAction
 }
 
 class StockChartViewModel(
@@ -43,6 +46,14 @@ class StockChartViewModel(
                 emit(StockChartMutation.SelectTimeFrame(action.timeFrame))
                 loadCandles(action.timeFrame)
             }
+
+            is StockChartAction.SetAlert -> PriceAlertStore.setAlert(
+                PriceAlert(
+                    symbol = symbol,
+                    targetPrice = action.targetPrice,
+                    direction = AlertDirection.BELOW,
+                ),
+            )
         }
     }
 

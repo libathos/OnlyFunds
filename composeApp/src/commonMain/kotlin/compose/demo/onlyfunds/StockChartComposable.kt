@@ -14,11 +14,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +39,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -70,6 +80,8 @@ fun StockChartContent(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showAlertDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -98,7 +110,87 @@ fun StockChartContent(
                 is StockChartUiState.Content.Chart -> ChartBody(content)
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+
+        ChartActionButtons(
+            onAlertClick = { showAlertDialog = true },
+            onWhatIfClick = { /* What-if flow to be implemented */ },
+        )
     }
+
+    if (showAlertDialog) {
+        PriceAlertDialog(
+            symbol = uiState.symbol,
+            onDismiss = { showAlertDialog = false },
+            onConfirm = { targetPrice ->
+                onAction(StockChartAction.SetAlert(targetPrice))
+                showAlertDialog = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun ChartActionButtons(
+    onAlertClick: () -> Unit,
+    onWhatIfClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Button(onClick = onAlertClick, modifier = Modifier.weight(1f)) {
+            Text("Alert")
+        }
+        OutlinedButton(onClick = onWhatIfClick, modifier = Modifier.weight(1f)) {
+            Text("What-if")
+        }
+    }
+}
+
+@Composable
+private fun PriceAlertDialog(
+    symbol: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit,
+) {
+    var priceText by remember { mutableStateOf("") }
+    val targetPrice = priceText.trim().toDoubleOrNull()
+    val isValid = targetPrice != null && targetPrice > 0.0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Set price alert") },
+        text = {
+            Column {
+                Text("Notify me when $symbol falls to or below:")
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = priceText,
+                    onValueChange = { priceText = it },
+                    singleLine = true,
+                    prefix = { Text("$") },
+                    placeholder = { Text("0.00") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { targetPrice?.let(onConfirm) },
+                enabled = isValid,
+            ) {
+                Text("Set alert")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable

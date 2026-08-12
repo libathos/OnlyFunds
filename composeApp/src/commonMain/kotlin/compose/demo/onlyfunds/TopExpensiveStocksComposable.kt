@@ -14,6 +14,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +27,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -47,18 +50,32 @@ fun TopExpensiveStocksScreen(
     viewModel: TopExpensiveStocksViewModel = viewModel { TopExpensiveStocksViewModel() },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     DisposableEffect(viewModel) {
         viewModel.startPolling()
         onDispose { viewModel.stopPolling() }
     }
 
-    TopExpensiveStocksContent(
-        uiState = uiState,
-        onAction = viewModel::onAction,
-        onStockSelected = onStockSelected,
-        modifier = modifier,
-    )
+    LaunchedEffect(viewModel) {
+        viewModel.alertEvents.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        TopExpensiveStocksContent(
+            uiState = uiState,
+            onAction = viewModel::onAction,
+            onStockSelected = onStockSelected,
+        )
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp),
+        )
+    }
 }
 
 @Composable
