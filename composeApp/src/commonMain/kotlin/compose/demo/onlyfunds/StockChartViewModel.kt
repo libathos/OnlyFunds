@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.onlyfunds.domain.model.AlertDirection
 import io.onlyfunds.domain.model.ChartTimeFrame
 import io.onlyfunds.domain.model.PriceAlert
+import io.onlyfunds.domain.usecases.CalculateWhatIfUseCase
 import io.onlyfunds.domain.usecases.GetStockCandlesUseCase
 import io.onlyfunds.network.NetworkResponse
 import kotlinx.coroutines.Job
@@ -20,11 +21,18 @@ sealed interface StockChartAction {
     data object Retry : StockChartAction
     data class SelectTimeFrame(val timeFrame: ChartTimeFrame) : StockChartAction
     data class SetAlert(val targetPrice: Double) : StockChartAction
+    data class CalculateWhatIf(
+        val buyPrice: Double,
+        val quantity: Double,
+        val buyTimestamp: Long,
+    ) : StockChartAction
+    data object DismissWhatIf : StockChartAction
 }
 
 class StockChartViewModel(
     private val symbol: String,
     private val getStockCandles: GetStockCandlesUseCase = GetStockCandlesUseCase(),
+    private val calculateWhatIf: CalculateWhatIfUseCase = CalculateWhatIfUseCase(),
     private val uiProvider: StockChartUiProvider = StockChartUiProvider(),
     initialTimeFrame: ChartTimeFrame = ChartTimeFrame.MONTH,
 ) : ViewModel() {
@@ -54,6 +62,28 @@ class StockChartViewModel(
                     direction = AlertDirection.BELOW,
                 ),
             )
+
+            is StockChartAction.CalculateWhatIf -> runWhatIf(action)
+
+            StockChartAction.DismissWhatIf -> emit(StockChartMutation.DismissWhatIf)
+        }
+    }
+
+    private fun runWhatIf(action: StockChartAction.CalculateWhatIf) {
+        viewModelScope.launch {
+            emit(StockChartMutation.ShowWhatIfLoading)
+            val mutation = when (
+                val response = calculateWhatIf(
+                    symbol = symbol,
+                    buyPrice = action.buyPrice,
+                    quantity = action.quantity,
+                    buyTimestamp = action.buyTimestamp,
+                )
+            ) {
+                is NetworkResponse.Success -> StockChartMutation.ShowWhatIfResult(response.data)
+                is NetworkResponse.Error -> StockChartMutation.ShowWhatIfError(response.message)
+            }
+            emit(mutation)
         }
     }
 

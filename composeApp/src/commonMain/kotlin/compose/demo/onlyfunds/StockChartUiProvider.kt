@@ -2,12 +2,17 @@ package compose.demo.onlyfunds
 
 import io.onlyfunds.domain.model.ChartTimeFrame
 import io.onlyfunds.domain.model.StockCandles
+import io.onlyfunds.domain.model.WhatIfResult
 
 sealed interface StockChartMutation {
     data object ShowLoading : StockChartMutation
     data class SelectTimeFrame(val timeFrame: ChartTimeFrame) : StockChartMutation
     data class ShowChart(val candles: StockCandles) : StockChartMutation
     data class ShowError(val message: String) : StockChartMutation
+    data object ShowWhatIfLoading : StockChartMutation
+    data class ShowWhatIfResult(val result: WhatIfResult) : StockChartMutation
+    data class ShowWhatIfError(val message: String) : StockChartMutation
+    data object DismissWhatIf : StockChartMutation
 }
 
 class StockChartUiProvider {
@@ -34,6 +39,18 @@ class StockChartUiProvider {
 
             is StockChartMutation.ShowChart ->
                 current.copy(content = toChartContent(mutation.candles))
+
+            StockChartMutation.ShowWhatIfLoading ->
+                current.copy(whatIf = WhatIfState.Calculating)
+
+            is StockChartMutation.ShowWhatIfResult ->
+                current.copy(whatIf = WhatIfState.Ready(mutation.result.toWhatIfUiModel()))
+
+            is StockChartMutation.ShowWhatIfError ->
+                current.copy(whatIf = WhatIfState.Error(mutation.message))
+
+            StockChartMutation.DismissWhatIf ->
+                current.copy(whatIf = null)
         }
 
     private fun toChartContent(candles: StockCandles): StockChartUiState.Content {
@@ -60,6 +77,26 @@ class StockChartUiProvider {
             trend = trend,
             minLabel = formatUsd(prices.min()),
             maxLabel = formatUsd(prices.max()),
+        )
+    }
+
+    private fun WhatIfResult.toWhatIfUiModel(): WhatIfUiModel {
+        val trend = when {
+            profitLoss > 0 -> PriceTrend.Up
+            profitLoss < 0 -> PriceTrend.Down
+            else -> PriceTrend.Flat
+        }
+        return WhatIfUiModel(
+            symbol = symbol,
+            quantityLabel = formatQuantity(quantity),
+            buyDateLabel = formatDate(buyTimestamp),
+            buyPriceLabel = formatUsd(buyPrice),
+            currentPriceLabel = formatUsd(currentPrice),
+            investedLabel = formatUsd(invested),
+            currentValueLabel = formatUsd(currentValue),
+            profitLossLabel = formatSignedUsd(profitLoss),
+            profitLossPercentLabel = formatSignedPercent(profitLossPercent),
+            trend = trend,
         )
     }
 }
