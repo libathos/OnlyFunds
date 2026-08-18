@@ -1,4 +1,4 @@
-package compose.demo.onlyfunds
+package io.onlyfunds.domain.store
 
 import io.onlyfunds.domain.model.PriceAlert
 import kotlinx.coroutines.flow.MutableStateFlow

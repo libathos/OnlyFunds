@@ -1,4 +1,4 @@
-package compose.demo.onlyfunds
+package compose.demo.onlyfunds.stockChartScreen.composables
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -48,6 +48,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import compose.demo.onlyfunds.theme.OnlyFundsTheme
+import compose.demo.onlyfunds.topStocksScreen.mvi.PriceTrend
+import compose.demo.onlyfunds.application.misc.formatDate
+import compose.demo.onlyfunds.application.misc.formatUsd
+import compose.demo.onlyfunds.stockChartScreen.mvi.ChartPoint
+import compose.demo.onlyfunds.stockChartScreen.mvi.StockChartAction
+import compose.demo.onlyfunds.stockChartScreen.mvi.StockChartUiState
+import compose.demo.onlyfunds.stockChartScreen.mvi.StockChartViewModel
+import compose.demo.onlyfunds.stockChartScreen.mvi.WhatIfState
+import compose.demo.onlyfunds.stockChartScreen.mvi.WhatIfUiModel
 import io.onlyfunds.domain.model.ChartTimeFrame
 import kotlin.math.roundToInt
 
@@ -65,7 +75,11 @@ fun StockChartScreen(
     symbol: String,
     modifier: Modifier = Modifier,
     onBack: () -> Unit,
-    viewModel: StockChartViewModel = viewModel(key = symbol) { StockChartViewModel(symbol) },
+    viewModel: StockChartViewModel = viewModel(key = symbol) {
+        StockChartViewModel(
+            symbol
+        )
+    },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 

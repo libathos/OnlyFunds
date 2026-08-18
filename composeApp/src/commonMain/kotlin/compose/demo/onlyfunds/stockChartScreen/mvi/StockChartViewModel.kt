@@ -1,7 +1,8 @@
-package compose.demo.onlyfunds
+package compose.demo.onlyfunds.stockChartScreen.mvi
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.onlyfunds.domain.store.PriceAlertStore
 import io.onlyfunds.domain.model.AlertDirection
 import io.onlyfunds.domain.model.ChartTimeFrame
 import io.onlyfunds.domain.model.PriceAlert

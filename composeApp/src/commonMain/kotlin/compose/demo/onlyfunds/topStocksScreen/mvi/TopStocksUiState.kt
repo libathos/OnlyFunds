@@ -1,4 +1,4 @@
-package compose.demo.onlyfunds
+package compose.demo.onlyfunds.topStocksScreen.mvi
 
 enum class PriceTrend { Up, Down, Flat }
 

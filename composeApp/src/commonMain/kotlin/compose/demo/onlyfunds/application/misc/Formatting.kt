@@ -1,4 +1,4 @@
-package compose.demo.onlyfunds
+package compose.demo.onlyfunds.application.misc
 
 import kotlin.math.abs
 

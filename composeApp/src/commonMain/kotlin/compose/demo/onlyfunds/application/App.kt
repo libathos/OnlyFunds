@@ -1,4 +1,4 @@
-package compose.demo.onlyfunds
+package compose.demo.onlyfunds.application
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +11,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import compose.demo.onlyfunds.stockChartScreen.composables.StockChartScreen
+import compose.demo.onlyfunds.theme.OnlyFundsTheme
+import compose.demo.onlyfunds.topStocksScreen.composables.TopExpensiveStocksScreen
 
 @Composable
 @Preview

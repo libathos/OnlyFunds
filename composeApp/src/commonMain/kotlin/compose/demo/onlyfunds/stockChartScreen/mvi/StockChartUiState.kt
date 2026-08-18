@@ -1,5 +1,6 @@
-package compose.demo.onlyfunds
+package compose.demo.onlyfunds.stockChartScreen.mvi
 
+import compose.demo.onlyfunds.topStocksScreen.mvi.PriceTrend
 import io.onlyfunds.domain.model.ChartTimeFrame
 
 data class ChartPoint(val timestamp: Long, val price: Double)

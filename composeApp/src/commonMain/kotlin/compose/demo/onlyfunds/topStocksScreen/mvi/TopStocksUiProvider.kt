@@ -1,5 +1,6 @@
-package compose.demo.onlyfunds
+package compose.demo.onlyfunds.topStocksScreen.mvi
 
+import compose.demo.onlyfunds.application.misc.formatUsd
 import io.onlyfunds.domain.model.Quote
 
 data class StockQuote(val symbol: String, val quote: Quote)

@@ -1,4 +1,4 @@
-package compose.demo.onlyfunds
+package compose.demo.onlyfunds.topStocksScreen.composables
 
 import androidx.compose.animation.Animatable
 import androidx.compose.animation.AnimatedContent
@@ -42,6 +42,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import compose.demo.onlyfunds.theme.OnlyFundsTheme
+import compose.demo.onlyfunds.topStocksScreen.mvi.PriceTrend
+import compose.demo.onlyfunds.topStocksScreen.mvi.StockRowUiModel
+import compose.demo.onlyfunds.topStocksScreen.mvi.TopExpensiveStocksViewModel
+import compose.demo.onlyfunds.topStocksScreen.mvi.TopStocksAction
+import compose.demo.onlyfunds.topStocksScreen.mvi.TopStocksUiState
 
 @Composable
 fun TopExpensiveStocksScreen(
@@ -311,16 +317,76 @@ fun TopExpensiveStocksScreenPreview() {
                 title = "Top 10 Most Expensive Stocks",
                 content = TopStocksUiState.Content.Stocks(
                     rows = listOf(
-                        StockRowUiModel("1", "BRK.A", "$628000.00", 628000.00, PriceTrend.Flat),
-                        StockRowUiModel("2", "NVR", "$7345.50", 7345.50, PriceTrend.Up),
-                        StockRowUiModel("3", "SEB", "$4820.11", 4820.11, PriceTrend.Down),
-                        StockRowUiModel("4", "BKNG", "$3980.75", 3980.75, PriceTrend.Up),
-                        StockRowUiModel("5", "AZO", "$2960.00", 2960.00, PriceTrend.Flat),
-                        StockRowUiModel("6", "MELI", "$1620.40", 1620.40, PriceTrend.Down),
-                        StockRowUiModel("7", "AVGO", "$1320.90", 1320.90, PriceTrend.Up),
-                        StockRowUiModel("8", "NFLX", "$690.15", 690.15, PriceTrend.Flat),
-                        StockRowUiModel("9", "ADBE", "$540.30", 540.30, PriceTrend.Down),
-                        StockRowUiModel("10", "AAPL", "$212.05", 212.05, PriceTrend.Up),
+                        StockRowUiModel(
+                            "1",
+                            "BRK.A",
+                            "$628000.00",
+                            628000.00,
+                            PriceTrend.Flat
+                        ),
+                        StockRowUiModel(
+                            "2",
+                            "NVR",
+                            "$7345.50",
+                            7345.50,
+                            PriceTrend.Up
+                        ),
+                        StockRowUiModel(
+                            "3",
+                            "SEB",
+                            "$4820.11",
+                            4820.11,
+                            PriceTrend.Down
+                        ),
+                        StockRowUiModel(
+                            "4",
+                            "BKNG",
+                            "$3980.75",
+                            3980.75,
+                            PriceTrend.Up
+                        ),
+                        StockRowUiModel(
+                            "5",
+                            "AZO",
+                            "$2960.00",
+                            2960.00,
+                            PriceTrend.Flat
+                        ),
+                        StockRowUiModel(
+                            "6",
+                            "MELI",
+                            "$1620.40",
+                            1620.40,
+                            PriceTrend.Down
+                        ),
+                        StockRowUiModel(
+                            "7",
+                            "AVGO",
+                            "$1320.90",
+                            1320.90,
+                            PriceTrend.Up
+                        ),
+                        StockRowUiModel(
+                            "8",
+                            "NFLX",
+                            "$690.15",
+                            690.15,
+                            PriceTrend.Flat
+                        ),
+                        StockRowUiModel(
+                            "9",
+                            "ADBE",
+                            "$540.30",
+                            540.30,
+                            PriceTrend.Down
+                        ),
+                        StockRowUiModel(
+                            "10",
+                            "AAPL",
+                            "$212.05",
+                            212.05,
+                            PriceTrend.Up
+                        ),
                     ),
                 ),
             ),
