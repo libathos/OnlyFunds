@@ -42,6 +42,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import compose.demo.onlyfunds.application.misc.LockScreenOrientation
+import compose.demo.onlyfunds.application.misc.ScreenOrientation
 import compose.demo.onlyfunds.theme.OnlyFundsTheme
 import compose.demo.onlyfunds.topStocksScreen.mvi.PriceTrend
 import compose.demo.onlyfunds.topStocksScreen.mvi.StockRowUiModel
@@ -55,6 +57,8 @@ fun TopExpensiveStocksScreen(
     onStockSelected: (String) -> Unit = {},
     viewModel: TopExpensiveStocksViewModel = viewModel { TopExpensiveStocksViewModel() },
 ) {
+    LockScreenOrientation(ScreenOrientation.PORTRAIT)
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 

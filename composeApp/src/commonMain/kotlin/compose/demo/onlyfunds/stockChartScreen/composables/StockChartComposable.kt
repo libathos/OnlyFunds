@@ -50,6 +50,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import compose.demo.onlyfunds.theme.OnlyFundsTheme
 import compose.demo.onlyfunds.topStocksScreen.mvi.PriceTrend
+import compose.demo.onlyfunds.application.misc.LockScreenOrientation
+import compose.demo.onlyfunds.application.misc.ScreenOrientation
 import compose.demo.onlyfunds.application.misc.formatDate
 import compose.demo.onlyfunds.application.misc.formatUsd
 import compose.demo.onlyfunds.stockChartScreen.mvi.ChartPoint
@@ -61,7 +63,7 @@ import compose.demo.onlyfunds.stockChartScreen.mvi.WhatIfUiModel
 import io.onlyfunds.domain.model.ChartTimeFrame
 import kotlin.math.roundToInt
 
-private val CHART_TIME_FRAMES: List<Pair<ChartTimeFrame, String>> = listOf(
+internal val CHART_TIME_FRAMES: List<Pair<ChartTimeFrame, String>> = listOf(
     ChartTimeFrame.DAY to "1D",
     ChartTimeFrame.WEEK to "1W",
     ChartTimeFrame.MONTH to "1M",
@@ -81,6 +83,8 @@ fun StockChartScreen(
         )
     },
 ) {
+    LockScreenOrientation(ScreenOrientation.PORTRAIT)
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     StockChartContent(
@@ -99,6 +103,7 @@ fun StockChartContent(
     modifier: Modifier = Modifier,
 ) {
     var showAlertDialog by remember { mutableStateOf(false) }
+    var showMaximizedChart by remember { mutableStateOf(false) }
     var whatIfMode by remember { mutableStateOf(false) }
     var buyPoint by remember { mutableStateOf<ChartPoint?>(null) }
     var askQuantity by remember { mutableStateOf(false) }
@@ -111,7 +116,12 @@ fun StockChartContent(
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
     ) {
-        ChartHeader(symbol = uiState.symbol, onBack = onBack)
+        ChartHeader(
+            symbol = uiState.symbol,
+            onBack = onBack,
+            maximizeEnabled = chart != null,
+            onMaximize = { showMaximizedChart = true },
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -161,6 +171,16 @@ fun StockChartContent(
             whatIfEnabled = chart != null,
             onAlertClick = { showAlertDialog = true },
             onWhatIfClick = { whatIfMode = !whatIfMode },
+        )
+    }
+
+    if (showMaximizedChart && chart != null) {
+        MaximizedStockChartDialog(
+            symbol = uiState.symbol,
+            content = chart,
+            selectedTimeFrame = uiState.selectedTimeFrame,
+            onSelectTimeFrame = { onAction(StockChartAction.SelectTimeFrame(it)) },
+            onDismiss = { showMaximizedChart = false },
         )
     }
 
@@ -426,7 +446,12 @@ private fun WhatIfRow(label: String, value: String) {
 }
 
 @Composable
-private fun ChartHeader(symbol: String, onBack: () -> Unit) {
+private fun ChartHeader(
+    symbol: String,
+    onBack: () -> Unit,
+    maximizeEnabled: Boolean,
+    onMaximize: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -447,6 +472,26 @@ private fun ChartHeader(symbol: String, onBack: () -> Unit) {
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(Modifier.weight(1f))
+        if (maximizeEnabled) {
+            MaximizeChartButton(onClick = onMaximize)
+        }
+    }
+}
+
+@Composable
+private fun MaximizeChartButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        MaximizeGlyph(
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(22.dp),
         )
     }
 }
@@ -497,7 +542,7 @@ private fun ChartBody(
 }
 
 @Composable
-private fun PriceSummary(latestPrice: String, changeLabel: String, trend: PriceTrend) {
+internal fun PriceSummary(latestPrice: String, changeLabel: String, trend: PriceTrend) {
     val changeColor = when (trend) {
         PriceTrend.Up -> OnlyFundsTheme.colors.positive
         PriceTrend.Down -> OnlyFundsTheme.colors.negative
@@ -520,7 +565,7 @@ private fun PriceSummary(latestPrice: String, changeLabel: String, trend: PriceT
 }
 
 @Composable
-private fun LineChart(
+internal fun LineChart(
     points: List<ChartPoint>,
     trend: PriceTrend,
     selectedPoint: ChartPoint?,
@@ -630,7 +675,7 @@ private fun LineChart(
 }
 
 @Composable
-private fun TimeFrameSelector(selected: ChartTimeFrame, onSelect: (ChartTimeFrame) -> Unit) {
+internal fun TimeFrameSelector(selected: ChartTimeFrame, onSelect: (ChartTimeFrame) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
