@@ -15,14 +15,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,6 +40,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -55,6 +59,7 @@ import compose.demo.onlyfunds.application.misc.ScreenOrientation
 import compose.demo.onlyfunds.application.misc.formatDate
 import compose.demo.onlyfunds.application.misc.formatUsd
 import compose.demo.onlyfunds.stockChartScreen.mvi.ChartPoint
+import compose.demo.onlyfunds.stockChartScreen.mvi.SmaCrossUiModel
 import compose.demo.onlyfunds.stockChartScreen.mvi.StockChartAction
 import compose.demo.onlyfunds.stockChartScreen.mvi.StockChartUiState
 import compose.demo.onlyfunds.stockChartScreen.mvi.StockChartViewModel
@@ -204,13 +209,14 @@ fun StockChartContent(
                 askQuantity = false
                 buyPoint = null
             },
-            onConfirm = { quantity ->
+            onConfirm = { quantity, autoTradeOnSmaCross ->
                 askQuantity = false
                 onAction(
                     StockChartAction.CalculateWhatIf(
                         buyPrice = point.price,
                         quantity = quantity,
                         buyTimestamp = point.timestamp,
+                        autoTradeOnSmaCross = autoTradeOnSmaCross,
                     ),
                 )
             },
@@ -311,9 +317,10 @@ private fun WhatIfQuantityDialog(
     symbol: String,
     point: ChartPoint,
     onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit,
+    onConfirm: (Double, Boolean) -> Unit,
 ) {
     var quantityText by remember { mutableStateOf("") }
+    var autoTradeOnSmaCross by remember { mutableStateOf(false) }
     val quantity = quantityText.trim().toDoubleOrNull()
     val isValid = quantity != null && quantity > 0.0
 
@@ -336,11 +343,16 @@ private fun WhatIfQuantityDialog(
                     placeholder = { Text("0") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 )
+                Spacer(Modifier.height(12.dp))
+                AutoTradeToggle(
+                    checked = autoTradeOnSmaCross,
+                    onCheckedChange = { autoTradeOnSmaCross = it },
+                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { quantity?.let(onConfirm) },
+                onClick = { quantity?.let { onConfirm(it, autoTradeOnSmaCross) } },
                 enabled = isValid,
             ) {
                 Text("Calculate")
@@ -352,6 +364,31 @@ private fun WhatIfQuantityDialog(
             }
         },
     )
+}
+
+@Composable
+private fun AutoTradeToggle(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Auto trade on SMA Cross",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Buy when a close is above the moving average, " +
+                    "sell when it closes below it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
 }
 
 @Composable
@@ -399,7 +436,11 @@ private fun WhatIfDetails(model: WhatIfUiModel) {
         PriceTrend.Down -> "You would have lost"
         PriceTrend.Flat -> "You would have broken even"
     }
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+    ) {
         WhatIfRow("Shares", model.quantityLabel)
         WhatIfRow("Buy date", model.buyDateLabel)
         WhatIfRow("Buy price", model.buyPriceLabel)
@@ -419,6 +460,122 @@ private fun WhatIfDetails(model: WhatIfUiModel) {
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = profitColor,
+        )
+
+        model.smaCross?.let { smaCross ->
+            Spacer(Modifier.height(16.dp))
+            StrategyComparison(
+                smaCross = smaCross,
+                holdProfitLossLabel = model.profitLossLabel,
+                holdProfitLossPercentLabel = model.profitLossPercentLabel,
+                holdValueLabel = model.currentValueLabel,
+                holdTrend = model.trend,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StrategyComparison(
+    smaCross: SmaCrossUiModel,
+    holdProfitLossLabel: String,
+    holdProfitLossPercentLabel: String,
+    holdValueLabel: String,
+    holdTrend: PriceTrend,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "Strategy comparison",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        StrategyCard(
+            title = smaCross.strategyLabel,
+            valueLabel = smaCross.finalValueLabel,
+            profitLossLabel = smaCross.profitLossLabel,
+            profitLossPercentLabel = smaCross.profitLossPercentLabel,
+            footnote = "${smaCross.tradesLabel} · ${smaCross.positionLabel}",
+            trend = smaCross.trend,
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        StrategyCard(
+            title = "Buy and hold",
+            valueLabel = holdValueLabel,
+            profitLossLabel = holdProfitLossLabel,
+            profitLossPercentLabel = holdProfitLossPercentLabel,
+            footnote = "Bought once, never sold",
+            trend = holdTrend,
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        Text(
+            text = smaCross.verdict,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
+private fun StrategyCard(
+    title: String,
+    valueLabel: String,
+    profitLossLabel: String,
+    profitLossPercentLabel: String,
+    footnote: String,
+    trend: PriceTrend,
+) {
+    val trendColor = when (trend) {
+        PriceTrend.Up -> OnlyFundsTheme.colors.positive
+        PriceTrend.Down -> OnlyFundsTheme.colors.negative
+        PriceTrend.Flat -> MaterialTheme.colorScheme.onSurface
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(trendColor.copy(alpha = 0.12f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = profitLossLabel,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = trendColor,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = profitLossPercentLabel,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = trendColor,
+            )
+        }
+        Text(
+            text = "Value today $valueLabel",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = footnote,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -503,6 +660,8 @@ private fun ChartBody(
     selectionEnabled: Boolean,
     onPointSelected: (ChartPoint) -> Unit,
 ) {
+    var showSma by remember { mutableStateOf(true) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         PriceSummary(
             latestPrice = content.latestPrice,
@@ -519,6 +678,7 @@ private fun ChartBody(
             selectionEnabled = selectionEnabled,
             onPointSelected = onPointSelected,
             modifier = Modifier.fillMaxWidth().weight(1f),
+            smaValues = if (showSma) content.smaValues else emptyList(),
         )
 
         Spacer(Modifier.height(8.dp))
@@ -526,18 +686,81 @@ private fun ChartBody(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "Low ${content.minLabel}",
                 style = MaterialTheme.typography.labelMedium,
                 color = OnlyFundsTheme.colors.negative,
             )
+            if (content.smaValues.isNotEmpty()) {
+                SmaLegendToggle(
+                    label = content.smaLabel,
+                    checked = showSma,
+                    onCheckedChange = { showSma = it },
+                )
+            }
             Text(
                 text = "High ${content.maxLabel}",
                 style = MaterialTheme.typography.labelMedium,
                 color = OnlyFundsTheme.colors.positive,
             )
         }
+    }
+}
+
+@Composable
+internal fun SmaLegendToggle(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val color = if (checked) {
+        OnlyFundsTheme.colors.sma
+    } else {
+        MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DashedLineGlyph(
+            color = color,
+            modifier = Modifier.width(18.dp).height(8.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+        )
+    }
+}
+
+@Composable
+private fun DashedLineGlyph(color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val stroke = 1.5.dp.toPx()
+        val y = size.height / 2f
+        val dash = size.width / 3f
+        drawLine(
+            color = color,
+            start = Offset(0f, y),
+            end = Offset(dash, y),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = color,
+            start = Offset(dash * 2f, y),
+            end = Offset(size.width, y),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
     }
 }
 
@@ -572,6 +795,7 @@ internal fun LineChart(
     selectionEnabled: Boolean,
     onPointSelected: (ChartPoint) -> Unit,
     modifier: Modifier = Modifier,
+    smaValues: List<Double?> = emptyList(),
 ) {
     val lineColor = when (trend) {
         PriceTrend.Up -> OnlyFundsTheme.colors.positive
@@ -580,6 +804,7 @@ internal fun LineChart(
     }
     val markerFill = MaterialTheme.colorScheme.background
     val guideColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+    val smaColor = OnlyFundsTheme.colors.sma
 
     val tapModifier = if (selectionEnabled && points.isNotEmpty()) {
         Modifier.pointerInput(points) {
@@ -605,8 +830,10 @@ internal fun LineChart(
         val width = size.width
         val height = size.height
         val prices = points.map { it.price }
-        val min = prices.min()
-        val max = prices.max()
+        val averages = if (smaValues.size == n) smaValues else emptyList()
+        val plotted = prices + averages.filterNotNull()
+        val min = plotted.min()
+        val max = plotted.max()
         val range = (max - min).takeIf { it > 0.0 } ?: 1.0
 
         fun yOf(price: Double): Float {
@@ -632,6 +859,39 @@ internal fun LineChart(
             )
             drawCircle(color = lineColor, radius = 6.dp.toPx(), center = Offset(mx, my))
             drawCircle(color = markerFill, radius = 3.dp.toPx(), center = Offset(mx, my))
+        }
+
+        fun drawSma() {
+            if (averages.isEmpty()) return
+            val smaPath = Path()
+            var started = false
+            averages.forEachIndexed { i, average ->
+                if (average == null) {
+                    started = false
+                    return@forEachIndexed
+                }
+                val x = xOf(i)
+                val y = yOf(average)
+                if (started) {
+                    smaPath.lineTo(x, y)
+                } else {
+                    smaPath.moveTo(x, y)
+                    started = true
+                }
+            }
+            val dashLength = 6.dp.toPx()
+            drawPath(
+                path = smaPath,
+                color = smaColor,
+                style = Stroke(
+                    width = 1.5.dp.toPx(),
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round,
+                    pathEffect = PathEffect.dashPathEffect(
+                        floatArrayOf(dashLength, dashLength),
+                    ),
+                ),
+            )
         }
 
         if (n == 1) {
@@ -670,6 +930,7 @@ internal fun LineChart(
             color = lineColor,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round),
         )
+        drawSma()
         drawMarker()
     }
 }

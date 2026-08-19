@@ -7,8 +7,11 @@ import compose.demo.onlyfunds.application.misc.formatSignedUsd
 import compose.demo.onlyfunds.application.misc.formatUsd
 import compose.demo.onlyfunds.topStocksScreen.mvi.PriceTrend
 import io.onlyfunds.domain.model.ChartTimeFrame
+import io.onlyfunds.domain.model.SmaCrossResult
 import io.onlyfunds.domain.model.StockCandles
 import io.onlyfunds.domain.model.WhatIfResult
+import io.onlyfunds.domain.usecases.CalculateSmaUseCase
+import kotlin.math.abs
 
 sealed interface StockChartMutation {
     data object ShowLoading : StockChartMutation
@@ -21,7 +24,9 @@ sealed interface StockChartMutation {
     data object DismissWhatIf : StockChartMutation
 }
 
-class StockChartUiProvider {
+class StockChartUiProvider(
+    private val calculateSma: CalculateSmaUseCase = CalculateSmaUseCase(),
+) {
     fun initialState(symbol: String, timeFrame: ChartTimeFrame): StockChartUiState =
         StockChartUiState(
             symbol = symbol,
@@ -76,6 +81,12 @@ class StockChartUiProvider {
             else -> PriceTrend.Flat
         }
 
+        val smaPeriod = calculateSma.effectivePeriod(
+            requested = CalculateSmaUseCase.DEFAULT_PERIOD,
+            size = prices.size,
+        )
+        val smaValues = calculateSma(prices, smaPeriod)
+
         return StockChartUiState.Content.Chart(
             points = points,
             latestPrice = formatUsd(last),
@@ -83,6 +94,8 @@ class StockChartUiProvider {
             trend = trend,
             minLabel = formatUsd(prices.min()),
             maxLabel = formatUsd(prices.max()),
+            smaValues = if (smaValues.any { it != null }) smaValues else emptyList(),
+            smaLabel = "SMA $smaPeriod",
         )
     }
 
@@ -103,6 +116,39 @@ class StockChartUiProvider {
             profitLossLabel = formatSignedUsd(profitLoss),
             profitLossPercentLabel = formatSignedPercent(profitLossPercent),
             trend = trend,
+            smaCross = smaCross?.toSmaCrossUiModel(profitLoss),
         )
     }
+
+    private fun SmaCrossResult.toSmaCrossUiModel(holdProfitLoss: Double): SmaCrossUiModel {
+        val trend = when {
+            profitLoss > 0 -> PriceTrend.Up
+            profitLoss < 0 -> PriceTrend.Down
+            else -> PriceTrend.Flat
+        }
+        val difference = profitLoss - holdProfitLoss
+        val verdict = when {
+            difference > 0 ->
+                "Auto trading on SMA cross wins by ${formatUsd(abs(difference))}"
+
+            difference < 0 ->
+                "Buy-and-hold wins by ${formatUsd(abs(difference))}"
+
+            else -> "Both strategies end up exactly the same"
+        }
+        return SmaCrossUiModel(
+            strategyLabel = "Auto trade on SMA $smaPeriod cross",
+            finalValueLabel = formatUsd(finalValue),
+            profitLossLabel = formatSignedUsd(profitLoss),
+            profitLossPercentLabel = formatSignedPercent(profitLossPercent),
+            tradesLabel = "$buyCount ${pluralTrades(buyCount, "buy", "buys")} · " +
+                "$sellCount ${pluralTrades(sellCount, "sale", "sales")}",
+            positionLabel = if (holdingAtEnd) "Still holding" else "Out of the market",
+            trend = trend,
+            verdict = verdict,
+        )
+    }
+
+    private fun pluralTrades(count: Int, singular: String, plural: String): String =
+        if (count == 1) singular else plural
 }

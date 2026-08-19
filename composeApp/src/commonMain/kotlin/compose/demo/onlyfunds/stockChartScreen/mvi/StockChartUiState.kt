@@ -5,6 +5,17 @@ import io.onlyfunds.domain.model.ChartTimeFrame
 
 data class ChartPoint(val timestamp: Long, val price: Double)
 
+data class SmaCrossUiModel(
+    val strategyLabel: String,
+    val finalValueLabel: String,
+    val profitLossLabel: String,
+    val profitLossPercentLabel: String,
+    val tradesLabel: String,
+    val positionLabel: String,
+    val trend: PriceTrend,
+    val verdict: String,
+)
+
 data class WhatIfUiModel(
     val symbol: String,
     val quantityLabel: String,
@@ -16,6 +27,7 @@ data class WhatIfUiModel(
     val profitLossLabel: String,
     val profitLossPercentLabel: String,
     val trend: PriceTrend,
+    val smaCross: SmaCrossUiModel? = null,
 )
 
 sealed interface WhatIfState {
@@ -40,6 +52,8 @@ data class StockChartUiState(
             val trend: PriceTrend,
             val minLabel: String,
             val maxLabel: String,
+            val smaValues: List<Double?> = emptyList(),
+            val smaLabel: String = "",
         ) : Content
     }
 }

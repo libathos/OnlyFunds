@@ -21,6 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,6 +81,8 @@ internal fun MaximizedStockChartContent(
     onMinimize: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showSma by remember { mutableStateOf(true) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -128,6 +134,7 @@ internal fun MaximizedStockChartContent(
             selectionEnabled = false,
             onPointSelected = {},
             modifier = Modifier.fillMaxWidth().weight(1f),
+            smaValues = if (showSma) content.smaValues else emptyList(),
         )
 
         Spacer(Modifier.height(8.dp))
@@ -135,12 +142,20 @@ internal fun MaximizedStockChartContent(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "Low ${content.minLabel}",
                 style = MaterialTheme.typography.labelMedium,
                 color = OnlyFundsTheme.colors.negative,
             )
+            if (content.smaValues.isNotEmpty()) {
+                SmaLegendToggle(
+                    label = content.smaLabel,
+                    checked = showSma,
+                    onCheckedChange = { showSma = it },
+                )
+            }
             Text(
                 text = "High ${content.maxLabel}",
                 style = MaterialTheme.typography.labelMedium,

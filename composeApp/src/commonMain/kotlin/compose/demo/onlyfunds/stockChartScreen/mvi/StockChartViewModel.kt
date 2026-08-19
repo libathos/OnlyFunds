@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.onlyfunds.domain.store.PriceAlertStore
 import io.onlyfunds.domain.model.AlertDirection
+import io.onlyfunds.domain.model.Candle
 import io.onlyfunds.domain.model.ChartTimeFrame
 import io.onlyfunds.domain.model.PriceAlert
 import io.onlyfunds.domain.usecases.CalculateWhatIfUseCase
@@ -26,6 +27,7 @@ sealed interface StockChartAction {
         val buyPrice: Double,
         val quantity: Double,
         val buyTimestamp: Long,
+        val autoTradeOnSmaCross: Boolean = false,
     ) : StockChartAction
     data object DismissWhatIf : StockChartAction
 }
@@ -42,6 +44,7 @@ class StockChartViewModel(
     val uiState: StateFlow<StockChartUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+    private var loadedCandles: List<Candle> = emptyList()
 
     init {
         loadCandles(initialTimeFrame)
@@ -79,6 +82,8 @@ class StockChartViewModel(
                     buyPrice = action.buyPrice,
                     quantity = action.quantity,
                     buyTimestamp = action.buyTimestamp,
+                    candles = loadedCandles,
+                    autoTradeOnSmaCross = action.autoTradeOnSmaCross,
                 )
             ) {
                 is NetworkResponse.Success -> StockChartMutation.ShowWhatIfResult(response.data)
@@ -95,8 +100,15 @@ class StockChartViewModel(
             emit(StockChartMutation.ShowLoading)
             val nowEpochSeconds = Clock.System.now().epochSeconds
             val mutation = when (val response = getStockCandles(symbol, timeFrame, nowEpochSeconds)) {
-                is NetworkResponse.Success -> StockChartMutation.ShowChart(response.data)
-                is NetworkResponse.Error -> StockChartMutation.ShowError(response.message)
+                is NetworkResponse.Success -> {
+                    loadedCandles = response.data.candles
+                    StockChartMutation.ShowChart(response.data)
+                }
+
+                is NetworkResponse.Error -> {
+                    loadedCandles = emptyList()
+                    StockChartMutation.ShowError(response.message)
+                }
             }
             emit(mutation)
         }

@@ -10,4 +10,5 @@ data class WhatIfResult(
     val currentValue: Double,
     val profitLoss: Double,
     val profitLossPercent: Double,
+    val smaCross: SmaCrossResult? = null,
 )

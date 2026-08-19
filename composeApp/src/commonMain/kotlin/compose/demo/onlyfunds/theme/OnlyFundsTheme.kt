@@ -16,6 +16,7 @@ private val Mint = Color(0xFF8FD9A8)
 private val DividerWhite = Color(0x33FFFFFF)
 private val PositiveGreen = Color(0xFF4CD787)
 private val NegativeRed = Color(0xFFE5737A)
+private val SmaAmber = Color(0xFFF2C14E)
 
 private val OnlyFundsColorScheme = darkColorScheme(
     primary = SkyBlue,
@@ -32,6 +33,7 @@ data class OnlyFundsColors(
     val divider: Color,
     val positive: Color,
     val negative: Color,
+    val sma: Color,
 )
 
 private val LocalOnlyFundsColors = staticCompositionLocalOf {
@@ -40,6 +42,7 @@ private val LocalOnlyFundsColors = staticCompositionLocalOf {
         divider = Color.Unspecified,
         positive = Color.Unspecified,
         negative = Color.Unspecified,
+        sma = Color.Unspecified,
     )
 }
 
@@ -57,6 +60,7 @@ fun OnlyFundsTheme(content: @Composable () -> Unit) {
         divider = DividerWhite,
         positive = PositiveGreen,
         negative = NegativeRed,
+        sma = SmaAmber,
     )
     CompositionLocalProvider(LocalOnlyFundsColors provides colors) {
         MaterialTheme(
