@@ -21,12 +21,29 @@ val finnhubApiKey: String = run {
         ?: ""
 }
 
+// Optional custom CORS proxy base for the web target (e.g. a Cloudflare Worker).
+// Public proxies are unreliable, so a self-hosted proxy is the supported way to
+// make the chart load in the browser. Use "{url}" as a placeholder for the
+// encoded Yahoo URL, otherwise it is appended. Empty => public fallbacks only.
+val yahooCorsProxy: String = run {
+    val props = Properties()
+    val localProperties = rootProject.file("local.properties")
+    if (localProperties.exists()) {
+        localProperties.inputStream().use { props.load(it) }
+    }
+    props.getProperty("yahoo.cors.proxy")
+        ?: System.getenv("YAHOO_CORS_PROXY")
+        ?: ""
+}
+
 val generatedConfigDir = layout.buildDirectory.dir("generated/finnhub/kotlin")
 
 val generateFinnhubSecrets by tasks.registering {
     val outputDir = generatedConfigDir
     val apiKey = finnhubApiKey
+    val corsProxy = yahooCorsProxy
     inputs.property("apiKey", apiKey)
+    inputs.property("corsProxy", corsProxy)
     outputs.dir(outputDir)
     doLast {
         val packageDir = outputDir.get().asFile.resolve("io/onlyfunds/network")
@@ -37,6 +54,10 @@ val generateFinnhubSecrets by tasks.registering {
 
             internal object FinnhubSecrets {
                 const val API_KEY: String = "$apiKey"
+            }
+
+            internal object YahooSecrets {
+                const val CORS_PROXY: String = "$corsProxy"
             }
             """.trimIndent()
         )
@@ -66,6 +87,10 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.coroutines.core)
             }
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
         androidMain.dependencies { implementation(libs.ktor.client.okhttp) }
         iosMain.dependencies { implementation(libs.ktor.client.darwin) }

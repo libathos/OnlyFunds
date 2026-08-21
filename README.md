@@ -210,7 +210,27 @@ The shared tests in [`composeApp/src/commonTest`](./composeApp/src/commonTest) c
 (`SmaOverlayTest`), the SMA-cross backtest incl. edge cases (`SmaCrossBacktestTest`), and the orientation
 contract (`ScreenOrientationTest`).
 
----
+#### Stock chart on Web: CORS proxy
+
+Yahoo Finance's chart endpoint has no CORS headers, so the browser cannot call
+it directly and public proxies are unreliable. To make the Stock Chart screen
+load candles in the browser, deploy the bundled Cloudflare Worker and point the
+app at it:
+
+```shell
+cd tools/cors-proxy && npm install && npx wrangler login && npm run deploy
+```
+
+Then add the deployed URL to the git-ignored `local.properties`:
+
+```properties
+yahoo.cors.proxy=https://onlyfunds-cors.<your-subdomain>.workers.dev/?url=
+```
+
+See [tools/cors-proxy/README.md](./tools/cors-proxy/README.md) for details.
+Native targets (Android/iOS/Desktop) call Yahoo directly and need no proxy.
+
+### Build and Run iOS Application
 
 ## 🗂 Project layout
 

@@ -1,6 +1,7 @@
 package io.onlyfunds.network
 
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
@@ -14,6 +15,11 @@ import kotlinx.serialization.json.Json
 object FinnhubApiClient {
 
     val httpClient: HttpClient = HttpClient {
+        // Bound every request so a stalled network call surfaces an error rather
+        // than leaving the UI stuck on a loading spinner.
+        install(HttpTimeout) {
+            requestTimeoutMillis = 12_000
+        }
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true })
         }

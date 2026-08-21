@@ -1,0 +1,8 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "onlyfunds-cors"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Uncomment to override the default Yahoo-only host allowlist:
+# [vars]
+# ALLOWED_HOSTS = "query1.finance.yahoo.com,query2.finance.yahoo.com"
